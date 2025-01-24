@@ -5,13 +5,13 @@ import logging
 from typing import Dict, List, Any
 
 class BaseProcessor(ABC):
-    """数据处理基类"""
+    """Base class for data processing"""
     def __init__(self, config: Dict):
         self.config = config
         self._setup_logging()
     
     def _setup_logging(self):
-        """设置日志"""
+        """Initialize logging configuration"""
         log_dir = self.config.get('log_dir', 'logs')
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
@@ -27,18 +27,18 @@ class BaseProcessor(ABC):
     
     @abstractmethod
     def process(self, raw_data: List[Dict]) -> List[Dict]:
-        """处理原始数据的抽象方法"""
+        """Abstract method for processing raw data"""
         pass
     
     def save_processed_data(self, processed_data: List[Dict], output_path: str):
-        """保存处理后的数据"""
+        """Save processed data to file"""
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(processed_data, f, ensure_ascii=False, indent=2)
 
 class DOMTreeProcessor(BaseProcessor):
     def process(self, raw_data):
-        """处理DOM树模式的数据"""
+        """Process data in DOM tree mode"""
         processed_data = []
         for item in raw_data:
             processed_item = {
@@ -51,20 +51,20 @@ class DOMTreeProcessor(BaseProcessor):
 
 class VisionProcessor(BaseProcessor):
     def process(self, raw_data):
-        """处理视觉模式的数据"""
+        """Process data in vision mode"""
         processed_data = {
             'planning_data': [],
             'grounding_data': []
         }
         for item in raw_data:
-            # 处理planning数据
+            # Process planning data
             planning_item = {
                 'instruction': item['instruction'],
                 'observation': self._process_image(item['screenshot']),
                 'action': item['action']
             }
             
-            # 处理grounding数据
+            # Process grounding data
             grounding_item = {
                 'screenshot': self._process_image(item['screenshot']),
                 'action': item['action'],

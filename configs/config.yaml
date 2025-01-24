@@ -1,7 +1,7 @@
-# 全局配置
+# Global Configuration
 log_dir: "logs"
 
-# 数据下载配置
+# Data Download Configuration
 data_download:
   challenge_id: "L_if1ihd1jmMJq4WUbrYe"
   save_path: "data/raw"
@@ -9,10 +9,10 @@ data_download:
   username: ""
   password: ""
 
-# 处理模式
-mode: "dom_tree"  # 或 "vision"
+# Processing Mode
+mode: "dom_tree"  # or "vision"
 
-# 数据处理配置
+# Data Processing Configuration
 data_processing:
   save_path: "data/processed/processed_data.json"
   valid_actions: ["click", "type", "hover", "press_enter", "paste", "copy"]
@@ -20,41 +20,11 @@ data_processing:
   max_steps: 50
   dom_tree:
     max_sequence_length: 1024
-    include_attributes: ["tag", "text", "href", "src"]
   
   vision:
     image_size: [1024, 1024]
     augmentation: false
-
-# 训练配置
-training:
-  save_path: "data/sft"
-  templates:
-    system_prompt: true
-    include_retrieved_axtree: true
-  dom_tree:
-    model_type: "text-to-text"
-    max_length: 2048
-    
-  vision:
-    planning:
-      model_type: "vision-language"
-      image_encoder: "clip"
-    grounding:
-      model_type: "vision-coordinates"
-      image_size: [1024, 1024]
-
-# 推理配置
-inference:
-  browser_type: "playwright"
-  timeout: 30
-  max_retries: 3
-
-# 评估配置
-evaluation:
-  metrics: ["success_rate", "steps_per_task", "completion_time"]
-  max_steps: 20
-
+  
 # Data paths
 data:
   processed_data_path: "data/processed/processed_data.json"

@@ -5,13 +5,14 @@ from .dataset_io import GraphQLClient
 class AnnotationDataDownloader:
     def __init__(self, config):
         """
-        初始化下载器
-        config: 字典格式的配置
+        Initialize downloader
+        Args:
+            config: Configuration dictionary
         """
         self.challenge_id = config.get('challenge_id')
         self.save_path = config.get('save_path')
         
-        # 如果配置中提供了凭证，则设置环境变量
+        # Set environment variables if credentials provided
         if 'username' in config:
             os.environ['iMEAN_USERNAME'] = config['username']
         if 'password' in config:
@@ -20,21 +21,21 @@ class AnnotationDataDownloader:
         self.client = GraphQLClient()
         
     def download_annotations(self):
-        """从iMean平台下载标注数据"""
+        """Download annotation data from iMean platform"""
         try:
-            # 登录
+            # Login
             self.client.login()
             
-            # 确保保存路径存在
+            # Ensure save path exists
             os.makedirs(self.save_path, exist_ok=True)
             
-            # 下载数据
+            # Download data
             self.client.export_atom_flows(
                 challenge_id=self.challenge_id,
                 save_path=self.save_path
             )
             
-            # 读取下载的JSON文件
+            # Read downloaded JSON files
             json_files = [f for f in os.listdir(self.save_path) 
                          if f.endswith('.json')]
             
@@ -53,7 +54,7 @@ class AnnotationDataDownloader:
             raise Exception(f"Failed to download annotations: {str(e)}")
     
     def save_raw_data(self, data, output_path):
-        """保存原始数据到指定路径"""
+        """Save raw data to specified path"""
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False) 

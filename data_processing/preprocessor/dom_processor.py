@@ -6,19 +6,19 @@ import logging
 import os
 
 class DOMProcessor(BaseProcessor):
-    """DOM树数据处理器"""
+    """DOM tree data processor"""
     def __init__(self, config: Dict):
         super().__init__(config)
         self.processed_count = 0
         self.error_count = 0
     
     def process(self, raw_data: List[Dict]) -> List[Dict]:
-        """处理DOM树轨迹数据"""
+        """Process DOM tree trajectory data"""
         processed_data = []
         
         for traj_idx, trajectory in enumerate(raw_data):
             try:
-                # 确保steps是字符串形式
+                # Ensure steps is in string format
                 if isinstance(trajectory.get('steps'), list):
                     trajectory['steps'] = json.dumps(trajectory['steps'])
                 
@@ -39,10 +39,10 @@ class DOMProcessor(BaseProcessor):
         return processed_data
     
     def _process_single_trajectory(self, trajectory: Dict) -> Dict:
-        """处理单条轨迹数据"""
+        """Process single trajectory data"""
         processed_traj = copy.deepcopy(trajectory)
         
-        # 解析steps数据
+        # Parse steps data
         steps = json.loads(processed_traj['steps'])
         processed_steps = []
         
@@ -51,37 +51,37 @@ class DOMProcessor(BaseProcessor):
             if processed_step:
                 processed_steps.append(processed_step)
         
-        # 重新转换为JSON字符串
+        # Convert back to JSON string
         processed_traj['steps'] = json.dumps(processed_steps)
         return processed_traj
     
     def _process_step(self, step: Dict) -> Dict:
-        """处理单个步骤数据"""
+        """Process single step data"""
         processed_step = copy.deepcopy(step)
         
-        # 处理必要的字段
+        # Check required fields
         if not all(key in step for key in ['type', 'value', 'path']):
             logging.warning(f"Missing required fields in step: {step}")
             return None
         
-        # 处理DOM路径
+        # Process DOM path
         processed_step['path'] = self._process_dom_path(step['path'])
         
-        # 验证action类型和值
+        # Validate action type and value
         if not self._validate_action(processed_step):
             return None
             
         return processed_step
     
     def _process_dom_path(self, path: str) -> str:
-        """处理DOM路径"""
-        # 移除开头的html标签(如果存在)
+        """Process DOM path"""
+        # Remove leading html tag if exists
         if path.startswith('html>'):
             path = path[5:]
         return path
     
     def _validate_action(self, step: Dict) -> bool:
-        """验证action的有效性"""
+        """Validate action validity"""
         valid_actions = {'click', 'type', 'hover', 'press_enter'}
         
         if step['type'] not in valid_actions:
@@ -95,7 +95,7 @@ class DOMProcessor(BaseProcessor):
         return True 
 
     def save_processed_data(self, data: list, file_path: str):
-        """保存处理后的数据"""
+        """Save processed data"""
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2) 
