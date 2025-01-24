@@ -33,7 +33,7 @@ Follow the step wise instruction below:
 1. Download the latest iMean builder extension here: [iMean Builder](https://drive.google.com/file/d/1BpLOQ9M41rdc6VYY-1Aes1lhzo5-LdiH/view?usp=sharing)
 2. Install the extension on your browser.
 3. Record your web trajectory data you want to train your model on in the **natural** way you interact with the website. Edit the title of each data.
-4. Create a private channel on iMean Builder Platform and move all the data into that channel. -> How to: [Docs](https://webcanvas.gitbook.io/webcanvas-docs/3.-evaluation)
+4. Create a private channel on [iMean Builder Platform](https://www.imean.ai/builder) and move all the data into that channel. -> How to: [Docs](https://webcanvas.gitbook.io/webcanvas-docs/3.-evaluation)
 5. Create a private challenge on [WebCanvas website](https://www.imean.ai/web-canvas) and connect it with the channel in the last step. -> How to: [Docs](https://webcanvas.gitbook.io/webcanvas-docs/3.-evaluation)
 6. Get the challenge id and use it to download all the data from the iMean Builder Platform.
 
