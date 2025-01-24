@@ -19,7 +19,8 @@ We believe in empowering developers to have complete control over their web agen
 - [ ] Automatically evaluation using WebCanvas framework
 
 ## Previous Solutions
-For reference, you can check out the WebCanvas repo: [WebCanvas](https://github.com/iMeanAI/WebCanvas)
-For more information on open-source GUI agent research projects and collaborations, check out WebAgentLab ([WebAgentLab Homepage](https://github.com/iMeanAI/WebCanvas)).
+For reference on web agent evaluation, you can check out the WebCanvas repo: [WebCanvas](https://github.com/iMeanAI/WebCanvas)
+
+For more information on open-source GUI agent research projects and collaborations, check out WebAgentLab ([WebAgentLab Homepage](https://webagentlab.notion.site/homepage)).
 
 **Stay tuned!**
