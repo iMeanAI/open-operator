@@ -1,7 +1,5 @@
 # open-operator
-**Welcome to the open-operator repository!**
 
-## Our Motivation
 This project aims to provide the open-source community with an easy-to-use system for building, self-hosting, and evaluating web agent models. Our goal is to offer an alternative to the $200/month ChatGPT Pro and cloud-based, uncontrolled execution environments.
 
 With open-operator, you can:
@@ -22,5 +20,6 @@ We believe in empowering developers to have complete control over their web agen
 
 ## Previous Solutions
 For reference, you can check out the WebCanvas repo: [WebCanvas](https://github.com/iMeanAI/WebCanvas)
+For more information on open-source GUI agent research projects and collaborations, check out WebAgentLab ([WebAgentLab Homepage](https://github.com/iMeanAI/WebCanvas)).
 
 **Stay tuned!**
