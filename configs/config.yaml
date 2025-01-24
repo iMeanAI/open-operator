@@ -1,0 +1,38 @@
+# Global Configuration
+log_dir: "logs"
+
+# Data Download Configuration
+data_download:
+  challenge_id: "L_if1ihd1jmMJq4WUbrYe"
+  save_path: "data/raw"
+  save_raw_data: true
+  username: ""
+  password: ""
+
+# Processing Mode
+mode: "dom_tree"  # or "vision"
+
+# Data Processing Configuration
+data_processing:
+  save_path: "data/processed/processed_data.json"
+  valid_actions: ["click", "type", "hover", "press_enter", "paste", "copy"]
+  min_steps: 2
+  max_steps: 50
+  dom_tree:
+    max_sequence_length: 1024
+  
+  vision:
+    image_size: [1024, 1024]
+    augmentation: false
+  
+# Data paths
+data:
+  processed_data_path: "data/processed/processed_data.json"
+
+# Converter settings
+converter:
+  log_dir: "logs/converter"
+  save_path: "data/sft"
+  raw_axtree_dir: "data/raw_axtree"
+  formatted_axtree_dir: "data/formatted_axtree"
+  retrieved_axtree_dir: "data/retrieved_axtree" 
