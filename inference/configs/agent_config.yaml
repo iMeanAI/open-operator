@@ -1,0 +1,50 @@
+# Logging Configuration
+log_dir: "logs"
+log_level: "INFO"
+
+# Browser Environment Settings
+browser:
+  type: "local"  # Options: local, browserbase
+  headless: true
+  slow_mo: 0
+  viewport:
+    width: 1280
+    height: 720
+  locale: "en-US"
+  timeout: 30000
+  retry_attempts: 3
+
+# Model Configuration
+model:
+  available_models:
+    - "gpt-4o"
+    - "gpt-4o-mini"
+    - "claude-3-opus"
+    - "claude-3-sonnet"
+    - "gemini-pro"
+  selected: "gpt-4o"
+  json_models:
+    - "gpt-4o"
+    - "gpt-4o-mini"
+  json_model_response: false
+  max_tokens: 1024
+  temperature: 0.7
+
+# Token Pricing Configuration
+token_pricing:
+  pricing_models:
+    - "gpt-4o"
+    - "gpt-4o-mini"
+    - "claude-3-opus"
+    - "claude-3-sonnet"
+    - "gemini-pro"
+  gpt-4o_input_price: 0.03
+  gpt-4o_output_price: 0.06
+  gpt-4o-mini_input_price: 0.015
+  gpt-4o-mini_output_price: 0.03
+  claude-3-opus_input_price: 0.015
+  claude-3-opus_output_price: 0.075
+  claude-3-sonnet_input_price: 0.003
+  claude-3-sonnet_output_price: 0.015
+  gemini-pro_input_price: 0.001
+  gemini-pro_output_price: 0.002
