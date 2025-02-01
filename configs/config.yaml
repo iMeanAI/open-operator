@@ -6,8 +6,8 @@ data_download:
   challenge_id: "L_if1ihd1jmMJq4WUbrYe"
   save_path: "data/raw"
   save_raw_data: true
-  username: ""
-  password: ""
+  username: "han032206@gmail.com"
+  password: "qazwsxpl,okm145"
 
 # Processing Mode
 mode: "dom_tree"  # or "vision"

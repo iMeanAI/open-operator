@@ -46,6 +46,8 @@ logs/
 log/
 tmp/
 temp/
+token_results/
+temp_ref/
 
 # Data
 data/
