@@ -61,8 +61,6 @@ class ActiveElements:
         elif tag_name == 'button':
             return 'button'
         elif tag_name == 'a':
-            if 'href' in element["attributes"] and element["attributes"]['href']:
-                return 'link'
             return 'link'
         elif tag_name in ConditionTagNameList:
             role = element["attributes"].get('role')

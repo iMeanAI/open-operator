@@ -1,20 +1,45 @@
 [basic]
 task_mode = "batch_tasks"    # single_task or batch_tasks
 max_time_step = 25           # For all tasks, set the maximum step length
+log_dir = "logs"
+log_level = "INFO"
+
+[browser]
+type = "local"  # Options: local, browserbase
+headless = true
+slow_mo = 0
+viewport_width = 1280
+viewport_height = 720
+locale = "en-US"
+timeout = 30000
+retry_attempts = 3
 
 [model]
-json_model_response = false      # Whether to require a model to strictly output json format, currently only support OPENAI models.
-json_models = ["gpt-4-turbo",
-                   "gpt-4-turbo-2024-04-09",
-                   "gpt-4-0125-preview",
-                   "gpt-4-1106-preview",
-                   "gpt-3.5-turbo",
-                   "gpt-3.5-turbo-0125",
-                   "gpt-4o-2024-05-13",
-                   "gpt-4o-mini-2024-07-18",
-                   "gpt-4o",
-                   "gpt-4o-mini"]
-
+available_models = [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o1",
+    "o1-mini",
+    "claude-3.5-sonnet",
+    "claude-3.5-haiku",
+    "gemini-1.5-pro"
+]
+selected = "gpt-4o"
+json_model_response = false
+max_tokens = 1024
+temperature = 0.7
+json_models = [
+    "gpt-4-turbo",
+    "gpt-4-turbo-2024-04-09",
+    "gpt-4-0125-preview",
+    "gpt-4-1106-preview",
+    "gpt-3.5-turbo",
+    "gpt-3.5-turbo-0125",
+    "gpt-4o-2024-05-13",
+    "gpt-4o-mini-2024-07-18",
+    "gpt-4o",
+    "gpt-4o-mini"
+]
 
 [steps]
 interaction_mode = false             #  Whether human control of task execution status is required

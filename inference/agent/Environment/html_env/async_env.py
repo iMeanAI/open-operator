@@ -1,6 +1,6 @@
 from typing import Tuple, Any, Union
 
-from playwright.async_api import Page
+from playwright.async_api import async_playwright, Page
 from playwright.async_api import Error as PlaywrightError
 from playwright.sync_api import ViewportSize
 from urllib.parse import urlparse, urljoin
@@ -11,17 +11,17 @@ from PIL import Image
 from io import BytesIO
 import asyncio
 import base64
+import re
 
 from .actions import Action, ActionTypes
 from .build_tree import HTMLTree
 from .utils import stringfy_value
+import time
 
 from agent.Prompt import *
 from logs import logger
-
-from agent.Environment.browser_env import BrowserEnvironment, BrowserType
-
-
+import json
+import os
 class ActionExecutionError(Exception):
     """Custom action execution exception class"""
 
@@ -31,11 +31,9 @@ class ActionExecutionError(Exception):
         self.selector = selector
         super().__init__(message)
 
-
 class SelectorExecutionError(Exception):
     def __init__(self, message, selector=None):
         super().__init__(message)
-
 
 class AsyncHTMLEnvironment:
     @beartype
@@ -51,9 +49,8 @@ class AsyncHTMLEnvironment:
         sleep_after_execution: float = 0.0,
         locale: str = "en-US",
         use_vimium_effect=True,
-        browser_env: str = "local"
+        browser_env="local"
     ):
-        self.browser_env = browser_env
         self.use_vimium_effect = use_vimium_effect
         self.mode = mode
         self.headless = headless
@@ -65,132 +62,186 @@ class AsyncHTMLEnvironment:
         self.sleep_after_execution = sleep_after_execution
         self.tree = HTMLTree()
         self.locale = locale
-        self.browser_instance = None
+        self.context = None
         self.browser = None
-        self.page = None
-
-    async def validate_page(self, page, attempt):
-        """Page validation function with detailed logging"""
-        try:
-            logger.info(f"Starting page validation (attempt {attempt})...")
-            
-            if not page or not self.browser:
-                logger.error("Browser or page not properly initialized")
-                raise Exception("Browser connection lost")
-            
-            try:
-                # Using wait_for instead of timeout context manager
-                result = await asyncio.wait_for(
-                    self._evaluate_page(page),
-                    timeout=30.0
-                )
-                logger.info(f"Page evaluation successful: {result}")
-                return True
-            except asyncio.TimeoutError:
-                logger.error("Page validation timed out")
-                return False
-            except Exception as e:
-                logger.error(f"Page evaluation failed: {str(e)}")
-                return False
-            
-        except Exception as e:
-            logger.error(f"Unexpected error during page validation: {str(e)}")
-            return False
-
-    async def _evaluate_page(self, page):
-        """Helper method to evaluate page state"""
-        return await page.evaluate("""
-            () => {
-                return {
-                    readyState: document.readyState,
-                    url: window.location.href,
-                    timestamp: Date.now()
-                }
-            }
-        """)
-
-    async def setup(self, start_url: str) -> None:
-        try:
-            logger.info(f"Starting browser setup using {self.browser_env} environment...")
-            
-            self.browser, self.context, self.playwright, self.browser_instance = await BrowserEnvironment.create_browser_instance(
-                self.browser_env,
-                self.headless,
-                self.slow_mo,
-                self.viewport_size,
-                self.locale
-            )
-            
-            if self.context:
-                self.context.on("page", self.page_on_handler)
-                self.page = await self.context.new_page()
-            else:
-                self.page = await self.browser.new_page(
-                    viewport=self.viewport_size,
-                    device_scale_factor=1,
-                    locale=self.locale
-                )
-
-            if start_url:
-                await self.page.goto(start_url)
-                await self.page.wait_for_timeout(500)
-            
-            self.html_content = await self.page.content()
-            
-        except Exception as e:
-            logger.error(f"Failed to set up environment: {str(e)}")
-            await self.close()
-            raise
-
-    async def close(self):
-        logger.info("Starting cleanup process...")
-        if self.browser_instance:
-            await self.browser_instance.__aexit__(None, None, None)
-        if self.page:
-            await self.page.close()
-        if self.browser:
-            if self.browser_env == BrowserType.LOCAL.value:
-                await self.browser.close()
-                if self.playwright:
-                    await self.playwright.stop()
-            else:
-                await self.browser.close()
-
-    async def reset(self, start_url: str = ""):
-        await self.setup(start_url)
+        self.current_events = []  # Add event queue
+        self.events_directory = os.path.join(os.path.dirname(__file__), '..', 'js_event')
+        os.makedirs(self.events_directory, exist_ok=True)
 
     async def page_on_handler(self, page):
         self.page = page
 
-    async def get_obs(self) -> Union[str, Tuple[str, str]]:
-        observation = ""
-        observation_VforD = ""
+    async def setup(self, start_url: str) -> None:
+        self.playwright = await async_playwright().start()
+        
         try:
-            if not self.html_content.strip():
-                self.html_content = await self.retry_content()
-            
-            # 获取当前页面的基础 URL
-            base_url = str(self.page.url)
-            self.tree.base_url = base_url  # 需要在 HTMLTree 类中添加 base_url 属性
-            
-            self.tree.fetch_html_content(self.html_content)
-            logger.info("-- Successfully fetch html content")
-            tab_name = await self.page.title()
-            dom_tree = self.tree.build_dom_tree()
-            observation = f"current web tab name is \'{tab_name}\'\n" + dom_tree
-            
-            if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"]:
-                observation_VforD = await self.capture()
+            # Try to connect to BrowserBase first
+            browserbase_api_key = os.environ.get('BROWSERBASE_API_KEY')
+            if browserbase_api_key:
+                logger.info("Attempting to connect to BrowserBase Cloud Environment...")
+                browser_cdp_url = f"wss://connect.browserbase.com?apiKey={browserbase_api_key}"
+                self.browser = await self.playwright.chromium.connect_over_cdp(browser_cdp_url)
+                self.context = self.browser.contexts[0]  # Use the existing context from BrowserBase
+                logger.info("Successfully connected to BrowserBase")
+            else:
+                # Fallback to local browser if no API key found
+                logger.info("No BrowserBase API key found, launching local browser...")
+                self.browser = await self.playwright.chromium.launch(
+                    headless=self.headless,
+                    slow_mo=self.slow_mo
+                )
+                self.context = await self.browser.new_context(
+                    viewport=self.viewport_size,
+                    locale=self.locale
+                )
+                logger.info("Local browser launched successfully")
+
+            # Set up page handler for both scenarios
+            self.context.on("page", self.page_on_handler)
+
+            if start_url:
+                # Use existing or create new page
+                self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+                await self.page.goto(start_url, timeout=10000)
+                await self.page.wait_for_timeout(500)
+                self.html_content = await self.page.content()
+            else:
+                self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+                self.html_content = await self.page.content()
+
+            # JS event listener setup
+            await self.context.expose_binding(
+                "handleEvent",
+                lambda source, selector, event_type, element_info: self._handle_event(selector, event_type, element_info)
+            )
+
         except Exception as e:
-            logger.error(f"-- Failed to fetch html content, error occur {e}")
-        
-        if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"]:
-            is_valid, message = is_valid_base64(observation_VforD)
-            logger.info("Successfully fetch html content with observation_VforD:", message)
-        
-        return (observation, observation_VforD) if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"] else observation
-    
-    async def get_obs1(self) -> Union[str, Tuple[str, str]]:
+            logger.error(f"Failed to setup browser environment: {str(e)}")
+            # Cleanup in case of failure
+            if hasattr(self, 'browser') and self.browser:
+                await self.browser.close()
+            if hasattr(self, 'playwright') and self.playwright:
+                await self.playwright.stop()
+            raise
+
+    async def _event_listener(self):
+        """Add universal event listener"""
+        logger.info("Setting up event listeners...")  # Add debug log
+        try:
+            # Then set up event listeners
+            await self.page.evaluate("""
+                () => {
+                    const allEvents = [
+                        'click', 'input', 'change', 'keydown', 'keyup',
+                        'mouseover', 'mouseout', 'mousedown', 'mouseup', 'focus', 'blur'
+                    ];
+
+                    function getElementSelector(element) {
+                        if (!element) return null;
+                        // Try to get unique selector for the element
+                        try {
+                            let path = [];
+                            while (element && element.nodeType === Node.ELEMENT_NODE) {
+                                let selector = element.nodeName.toLowerCase();
+                                if (element.id) {
+                                    selector += '#' + element.id;
+                                    path.unshift(selector);
+                                    break;
+                                } else {
+                                    let sibling = element;
+                                    let nth = 1;
+                                    while (sibling.previousElementSibling) {
+                                        sibling = sibling.previousElementSibling;
+                                        if (sibling.nodeName === element.nodeName) nth++;
+                                    }
+                                    if (nth > 1) selector += `:nth-child(${nth})`;
+                                }
+                                path.unshift(selector);
+                                element = element.parentNode;
+                            }
+                            return path.join(' > ');
+                        } catch (e) {
+                            return null;
+                        }
+                    }
+
+                    function getElementInfo(element) {
+                        return {
+                            textContent: element.textContent || '',
+                            value: element.value || '',
+                            tagName: element.tagName.toLowerCase()
+                        };
+                    }
+
+                    allEvents.forEach(eventType => {
+                        document.addEventListener(eventType, (event) => {
+                            const element = event.target;
+                            const selector = getElementSelector(element);
+                            const elementInfo = getElementInfo(element);
+
+                            window.handleEvent(
+                                selector,
+                                eventType,
+                                JSON.stringify(elementInfo)
+                            );
+                        }, true);
+                    });
+                }
+            """)
+            logger.info("Event listeners setup completed")
+        except Exception as e:
+            logger.error(f"Failed to setup event listeners: {str(e)}")
+
+
+    async def _handle_event(self, selector, event_type, element_info_str):
+        """
+        Handle DOM events by updating task events
+        """
+        def clean_text(text):
+            return text.replace("\n", "").replace("\t", "")
+        try:
+            element_info = json.loads(element_info_str)
+            # Create current event
+            current_event = {
+                "selector": selector,
+                "status": True,
+                "target_value": element_info.get("value") or element_info.get("textContent", ""),
+                "target_value_clean": clean_text(element_info.get("value") or element_info.get("textContent", "")),
+                "event_type": event_type,
+                "timestamp": time.time()
+            }
+            
+            # Add event to memory queue
+            self.current_events.append(current_event)
+            
+            # Keep queue size within reasonable limits
+            if len(self.current_events) > 100:  # Configurable maximum event count
+                self.current_events = self.current_events[-100:]
+            
+            # Save to file for debugging purposes
+            self._save_event_to_file(current_event)
+            
+        except Exception as e:
+            logger.error(f"Error handling event: {str(e)}")
+
+    def _save_event_to_file(self, current_event):
+        file_path = os.path.join(self.events_directory, "current_event.json")
+        try:
+            events = []
+            if os.path.exists(file_path):
+                with open(file_path, "r", encoding="utf-8") as json_file:
+                    events = json.load(json_file)
+            events.append(current_event)
+            with open(file_path, "w", encoding="utf-8") as json_file:
+                json.dump(events, json_file, indent=4, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error saving event to file: {str(e)}")
+
+    def get_latest_events(self, count=1):
+        """Get the latest events"""
+        return self.current_events[-count:] if self.current_events else []
+
+    async def get_obs(self) -> Union[str, Tuple[str, str]]:
         observation = ""
         observation_VforD = ""
         try:
@@ -211,6 +262,9 @@ class AsyncHTMLEnvironment:
             logger.info(
                 "Successfully fetch html content with observation_VforD:", message)
         return (observation, observation_VforD) if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"] else observation
+
+    async def reset(self, start_url: str = ""):
+        await self.setup(start_url)
 
     async def click(self, action):
         try:
@@ -267,29 +321,7 @@ class AsyncHTMLEnvironment:
 
     async def goto(self, action):
         await self.load_page_with_retry(action['url'])
-        # 添加等待页面加载完成的逻辑
-        try:
-            # 等待页面加载完成
-            await self.page.wait_for_load_state("networkidle", timeout=10000)
-            # 等待主要内容出现
-            await self.page.wait_for_selector("body", timeout=5000)
-            # 额外等待以确保动态内容加载
-            await self.page.wait_for_timeout(3000)
-            
-            # 获取页面内容前确保页面已经准备好
-            is_ready = await self.validate_page(self.page, 1)
-            if not is_ready:
-                raise Exception("Page not ready after loading")
-            
-            self.html_content = await self.page.content()
-            
-            if not self.html_content or len(self.html_content) < 1000:  # 假设正常页面至少有1000字符
-                logger.warning("Page content seems too small, might be incomplete")
-                # 尝试重新加载
-                self.html_content = await self.retry_content()
-        except Exception as e:
-            logger.error(f"Error loading page: {str(e)}")
-            raise
+        self.html_content = await self.page.content()
 
     async def fill_search(self, action):
         try:
@@ -490,12 +522,15 @@ class AsyncHTMLEnvironment:
             self.html_content = await self.page.content()
 
     async def execute_action(self, action: Action) -> Union[str, Tuple[str, str]]:
-        logger.info(f"Executing action: {action['action_type']}")
-        
+        """
+        """
+        await self._event_listener()
         if "element_id" in action and action["element_id"] != 0:
+            # logger.info(f'action["element_id"]:{action["element_id"]}')
+            # logger.info(
+            #     f'tree.nodeDict[action["element_id"]]:{self.tree.nodeDict[action["element_id"]]}')
             action["element_id"] = self.tree.nodeDict[action["element_id"]]
             element_value = self.tree.get_element_value(action["element_id"])
-            logger.info(f"Action targets element: {element_value}")
         match action["action_type"]:
             case ActionTypes.CLICK:
                 try:
@@ -591,47 +626,21 @@ class AsyncHTMLEnvironment:
                     error_message = f"An error({e}) occur"
                     raise ActionExecutionError(
                         action['action_type'], error_message) from e
-            case ActionTypes.GET_LINK:
-                try:
-                    self.html_content = await self.page.content()
-                    
-                    # 使用更通用的选择器来获取对象链接
-                    links = await self.page.evaluate('''(selector) => {
-                        const objectLinks = document.querySelectorAll(selector);
-                        const result = {};
-                        
-                        objectLinks.forEach(link => {
-                            const text = link.textContent.trim();
-                            const href = link.getAttribute('href');
-                            if (text && href && !href.startsWith('#')) {
-                                const name = text.trim();  
-                                if (name) {
-                                    result[name] = href;  
-                                }
-                            }
-                        });
-                        
-                        return JSON.stringify(result);
-                    }''', 'a');
-                    
-                    # 将结果存储在 html_content 中
-                    self.html_content = links  # links 已经是字符串化的JSON
-                    
-                except Exception as e:
-                    error_message = f"Failed to execute get_link action. An error({e}) occur"
-                    raise ActionExecutionError(
-                        action['action_type'], error_message) from e
             case _:
                 raise ValueError(
                     f"Unknown action type {action['action_type']}"
                 )
-
     async def get_page(self, element_id: int) -> Tuple[Page, str]:
         try:
             selector = self.tree.get_selector(element_id)
         except:
             selector = ""
         return self.page, selector
+
+    async def close(self):
+        await self.context.close()
+        await self.browser.close()
+        await self.playwright.stop()
 
     @staticmethod
     def encode_and_resize(image):
@@ -724,6 +733,7 @@ class AsyncHTMLEnvironment:
         await self.page.wait_for_timeout(20000)
 
     async def test_select_option_action(self, selector, value):
+        # Get all option values from select element including optgroups
         optgroup_values = await self.page.evaluate(f'''(selector) => {{
                 var values = [];
                 var selectElement = document.querySelector(selector);
@@ -740,11 +750,15 @@ class AsyncHTMLEnvironment:
                 }}
                 return values;
             }}''', selector)
+
+        # Find best matching option using string similarity
         best_option = [-1, "", -1]
         for i, option in enumerate(optgroup_values):
             similarity = SequenceMatcher(None, option, value).ratio()
             if similarity > best_option[2]:
                 best_option = [i, option, similarity]
+
+        # Select the best matching option and trigger change event
         await self.page.evaluate(f'''(selector) => {{
             var selectElement = document.querySelector(selector);
             var options = selectElement.querySelectorAll('option');
@@ -770,6 +784,7 @@ class AsyncHTMLEnvironment:
         await self.page.wait_for_timeout(2000)
 
     async def test_fill_form_action(self, selector, value):
+        # Set input value and trigger input event
         selector = rf"{selector}"
         await self.page.evaluate(f'''(selector) => {{
                 var element = document.querySelector(selector);
@@ -780,23 +795,3 @@ class AsyncHTMLEnvironment:
             }}
         ''', selector)
         await self.page.wait_for_timeout(2000)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

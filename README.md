@@ -13,7 +13,7 @@
 
 # open-operator
 
-This project aims to provide the open-source community with an easy-to-use system for building, self-hosting, and evaluating web agent models. Our goal is to offer an alternative to the $200/month ChatGPT Pro and cloud-based, uncontrolled execution environments.
+This project aims to provide the open-source community with an easy-to-use system for building, self-hosting, and evaluating web agent computer-use models. Our goal is to offer an alternative to the $200/month ChatGPT Pro and cloud-based, uncontrolled execution environments.
 
 With open-operator, you can:
 - Annotate your web trajectory data.
@@ -27,6 +27,30 @@ We believe in empowering developers to have complete control over their web agen
 ## Roadmap
 ![Roadmap](src/roadmap.png)
 Briefly describe the roadmap of the project. Green part will be included in this repo.
+
+## Run your Base Agent Using Open-Operator
+### Prepare the environment
+```bash
+conda create -n open-operator python=3.11
+pip install -r requirements.txt
+```
+
+For the browser environment, you can use [browserbase](https://www.browserbase.com/) to setup the following environment variables.
+
+```bash
+export BROWSERBASE_API_KEY=your_api_key
+```
+
+
+### Initialize the base agent
+```bash
+python inference/app.py
+```
+You can select the base model you want to use in the dropdown menu.(From Anthropic, Google, OpenAI, etc.)
+
+![Open-Operator](src/ui.png)
+
+Then start your first experience with Open-Operator!
 
 ## Data Annotation and Downloading
 Follow the step wise instruction below:

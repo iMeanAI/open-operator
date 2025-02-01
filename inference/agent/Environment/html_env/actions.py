@@ -26,7 +26,6 @@ class ActionTypes(IntEnum):
     SCROLL_UP = 11
     CACHE_DATA = 12
     GET_FINAL_ANSWER = 13
-    GET_LINK = 14
 
 @beartype
 def create_cache_data_action(elementid: int,fill_text: str) -> Action:
@@ -38,17 +37,9 @@ def create_cache_data_action(elementid: int,fill_text: str) -> Action:
         "element_name": ""
     }
 
+
 @beartype
-def create_get_link_action(elementid: int,  fill_text: str) -> Action:
-    return {
-        "action_type": ActionTypes.GET_LINK,
-        "element_id": elementid,
-        "url": "",
-        "fill_text": fill_text,
-        "element_name": ""
-    }
-@beartype
-def create_get_final_answer_action(elementid: int, fill_text: str) -> Action:
+def create_get_final_answer(elementid: int,fill_text: str) -> Action:
     return {
         "action_type": ActionTypes.GET_FINAL_ANSWER,
         "element_id": elementid,
@@ -200,9 +191,7 @@ def create_action(elementid: int, action_type: str, action_input: str) -> Action
     elif action_type == "cache_storage":
         return create_cache_data_action(elementid=elementid,fill_text=action_input)
     elif action_type == "get_final_answer":
-        return create_get_final_answer_action(elementid=elementid,fill_text=action_input)
-    elif action_type == "get_link":  # 新增的动作类型处理
-        return create_get_link_action(elementid=elementid, fill_text=action_input)
+        return create_get_final_answer(elementid=elementid,fill_text=action_input)
     else:
         return create_none_action(elementid=elementid)
 
@@ -222,7 +211,6 @@ __all__ = [
     "create_scroll_down_action",
     "create_scroll_up_action",
     "create_cache_data_action",
-    "create_get_final_answer_action",
-    "create_get_link_action",
+    "create_get_final_answer",
     "create_action"
 ]

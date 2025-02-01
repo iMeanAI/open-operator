@@ -245,7 +245,7 @@ async def run_task(
                     mode=mode,
                     observation_VforD=observation_VforD,
                     status_description=status_description
-                )##函数的主要作用是接收用户请求，利用不同的模式和语言模型生成相应的计划动作，并返回一个包含该动作及其描述的字典。
+                )
 
                 if out_put is not None:
                     break
