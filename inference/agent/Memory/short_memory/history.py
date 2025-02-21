@@ -22,6 +22,7 @@ class HistoryMemory:
             str_output += f'Specifically in the last step, you gave the following Thought: {current_trace["thought"]}\n You performed the following Action: {current_trace["action"]}\n You had the following Reflection: {self.reflection}\";\n'
         else:
             current_trace = input_list[-1]
+            print("current_trace", current_trace)
             str_output += f'Specifically in the last step, you gave the following Thought: {current_trace["thought"]}\n You performed the following Action: {current_trace["action"]}\n You had the following Reflection: {self.reflection}\";\n'
         return str_output
 

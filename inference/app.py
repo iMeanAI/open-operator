@@ -82,7 +82,7 @@ def create_demo():
                         min_width=100
                     )
                 mode_input = gr.Dropdown(
-                    choices=["dom"],
+                    choices=["dom","vision"],
                     value="dom",
                     label="Select Mode"
                 )

@@ -1,4 +1,4 @@
-from typing import Tuple, Any, Union
+from typing import Tuple, Any, Union, Optional
 
 from playwright.async_api import async_playwright, Page
 from playwright.async_api import Error as PlaywrightError
@@ -15,7 +15,7 @@ import re
 
 from .actions import Action, ActionTypes
 from .build_tree import HTMLTree
-from .utils import stringfy_value
+from .utils import stringfy_value, ElementNode
 import time
 
 from agent.Prompt import *
@@ -243,7 +243,7 @@ class AsyncHTMLEnvironment:
 
     async def get_obs(self) -> Union[str, Tuple[str, str]]:
         observation = ""
-        observation_VforD = ""
+        observation_V = ""
         try:
             if not self.html_content.strip():
                 self.html_content = await self.retry_content()
@@ -252,19 +252,62 @@ class AsyncHTMLEnvironment:
             tab_name = await self.page.title()
             dom_tree = self.tree.build_dom_tree()
             observation = f"current web tab name is \'{tab_name}\'\n" + dom_tree
-            if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"]:
-                observation_VforD = await self.capture()
         except Exception as e:
             logger.error(f"-- Failed to fetch html content,error occur {e}")
-        if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"]:
+        if self.mode in ["d_v", "dom_v_desc", "vision_to_dom", "vision"]:
+            observation_V = await self.capture()
             is_valid, message = is_valid_base64(
-                observation_VforD)
+                observation_V)
             logger.info(
-                "Successfully fetch html content with observation_VforD:", message)
-        return (observation, observation_VforD) if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"] else observation
-
+                "Successfully fetch visual observation content:" + message)
+        
+        if self.mode in ["d_v", "dom_v_desc", "vision_to_dom"]:
+            return (observation, observation_V)
+        elif self.mode == "vision":
+            return observation_V
+        else:
+            return observation
+            
     async def reset(self, start_url: str = ""):
         await self.setup(start_url)
+
+    
+    async def _get_element_id_at_position(self, x: int, y: int) -> Optional[int]:
+        """
+        Helper method to get element ID at coordinates
+        Returns ID from HTMLTree
+        """
+        try:
+            page = self.page
+            element = await page.evaluate(f'''() => {{
+                const element = document.elementFromPoint({x}, {y});
+                // 查找最近的有意义的子元素
+                const targetElement = element.querySelector('a, button, input, select, textarea') || element;
+                
+                return {{
+                    tag: targetElement.tagName.toLowerCase(),
+                    id: targetElement.id || '',
+                    className: targetElement.className || '',
+                    textContent: targetElement.textContent?.trim().substring(0, 100) || '',
+                    isClickable: (targetElement.tagName === 'A' || targetElement.tagName === 'BUTTON' || targetElement.onclick != null)
+                }};
+            }}''')
+            
+            if element:
+                print("element:", element)
+                # 在 HTMLTree 中查找匹配的元素
+                for node_id, node in enumerate(self.tree.elementNodes):
+                    if node == ElementNode:
+                        break
+                    # print("node:", node)
+                    if (node["tagName"] == element['tag'] and
+                        node["nodeId"] == element['id']):
+                        return node_id
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to get element ID at position: {str(e)}")
+            return 0
 
     async def click(self, action):
         try:

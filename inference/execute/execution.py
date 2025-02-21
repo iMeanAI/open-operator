@@ -40,7 +40,7 @@ def get_netloc(url: str) -> str:
     return netloc
 
 
-def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_reward: dict):
+async def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_reward: dict):
     thought = response["description"].get("thought")
     action_type = response.get('action_type') if response.get('action_type') else ""
     
@@ -61,7 +61,11 @@ def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_reward: 
     selector = None
     
     try:
-        element_id = int(response['id'])
+        if env.mode == "vision":
+            coordinates = response.get('coordinates', {"x": 0, "y": 0})
+            element_id = await env._get_element_id_at_position(coordinates["x"],coordinates["y"])
+        else:
+            element_id = int(response['id'])
     except:
         element_id = 0
         
@@ -109,6 +113,99 @@ def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_reward: 
             
     return execute_action, current_trace, selector, element_value, text_content
 
+def parse_current_trace_vision(response: dict, env: AsyncHTMLEnvironment, step_reward: dict):
+    # 1. 基本信息提取
+    thought = response.get("thought", "")
+    action_type = response.get('action_type', "")
+    
+    # 2. 处理action输入和坐标
+    action_input = response.get('action_input', "")
+    
+    
+    # 3. 构建追踪信息
+    reflection = step_reward.get("description") if step_reward else ""
+    current_trace = {
+        "thought": thought,
+        "action": action_type, 
+        "reflection": reflection
+    }
+    
+    # 4. 初始化返回值
+    text_content = ""
+    
+    # 5. 根据不同action_type处理
+    if action_type in ["type", "fill"]:
+        try:
+            # 验证必要参数
+            if not action_input:
+                raise ValueError("action_input is required for type/fill action")
+            if not (isinstance(coordinates['x'], (int, float)) and isinstance(coordinates['y'], (int, float))):
+                raise ValueError("Valid coordinates are required for type/fill action")
+                
+            text_content = action_input
+            
+        except Exception as e:
+            logger.error(f"Error processing type/fill action: {str(e)}")
+            action_type = "None"
+            coordinates = {"x": 0, "y": 0}
+            
+    elif action_type in ["click", "double_click", "right_click", "mouse_move", "left_click_drag"]:
+        try:
+            # 验证坐标
+            if not (isinstance(coordinates['x'], (int, float)) and isinstance(coordinates['y'], (int, float))):
+                raise ValueError(f"Valid coordinates are required for {action_type}")
+                
+        except Exception as e:
+            logger.error(f"Error processing click action: {str(e)}")
+            action_type = "None"
+            coordinates = {"x": 0, "y": 0}
+            
+    elif action_type in ["get_final_answer", "cache_data"]:
+        coordinates = {"x": 0, "y": 0}
+        text_content = action_input
+        
+    elif action_type == "screenshot":
+        coordinates = {"x": 0, "y": 0}
+        
+    else:
+        # 默认情况
+        action_type = "None"
+        coordinates = {"x": 0, "y": 0}
+    
+    # 6. 创建执行动作
+    try:
+        execute_action = create_vision_action(
+            action_type=action_type,
+            coordinates=coordinates,
+            action_input=str(action_input) if action_input else ""
+        )
+    except Exception as e:
+        logger.error(f"Create vision action error: {e}")
+        execute_action = create_vision_action(
+            action_type="None",
+            coordinates={"x": 0, "y": 0},
+            action_input=""
+        )
+    
+    return execute_action, current_trace, coordinates, text_content
+
+def create_vision_action(action_type: str, coordinates: dict, action_input: str = ""):
+    """
+    创建视觉模式下的执行动作
+    
+    Args:
+        action_type: 动作类型
+        coordinates: 坐标信息 {"x": x, "y": y}
+        action_input: 输入文本(可选)
+        
+    Returns:
+        包含动作信息的字典
+    """
+    return {
+        "action_type": action_type,
+        "coordinates": coordinates,
+        "action_input": action_input
+    }
 
 def read_config(toml_path=None):
     """
@@ -151,14 +248,14 @@ async def run_task(
         output_parameters=None,
         response_type=None
 ):
-    await env.reset("about:blank")
-
+    # await env.reset("https://www.google.com/")
+    await env.reset("https://www.google.com/search?q=paper+submission+dates+for+ACL2025")
     response_error_count = 0
     response_total_count = 0
     vision_reward = None
 
     # Related to the HTML environment
-    observation = ""
+    observation = await env.get_obs()
     observation_VforD = ""
     error_description = ""
     previous_trace = []
@@ -261,21 +358,22 @@ async def run_task(
             each_step_dict = {}
             each_step_dict["step_index"] = step_index
             each_step_dict["dict_result"] = out_put
-            execute_action, current_trace, path, element_value, text_content = parse_current_trace(
-                out_put, env, step_reward)
 
+            execute_action, current_trace, path, element_value, text_content = await parse_current_trace(
+                out_put, env, step_reward)
             selector, xpath = (
                 path[0], path[1]) if path is not None else (None, None)
+            each_step_dict["selector"] = selector
+            each_step_dict["element_value"] = element_value
 
             each_step_dict["current_trace"] = current_trace
-            each_step_dict["selector"] = selector
             each_step_dict["execute_action"] = execute_action
-            each_step_dict["element_value"] = element_value
             each_step_dict["text_content"] = text_content
 
             logger.info(f"-- Planning output: {out_put}")
             logger.info(f"-- Current trace: {current_trace}")
             logger.info(f"-- Action: {execute_action}")
+
             logger.info(f"-- Selector: {selector}")
             logger.info(f"-- Element value: {element_value}")
             
@@ -302,6 +400,10 @@ async def run_task(
                                     step_number=num_steps, description="obs", screenshot_base64=observation_VforD)
                 else:
                     observation = await env.get_obs()
+                    if mode == "vision":
+                        save_screenshot(mode=mode, record_time=record_time, task_name=task_name,
+                                    step_number=num_steps, description="obs", screenshot_base64=observation)
+
 
                 # URL after executing the action
                 each_step_dict["step_url"] = env.page.url

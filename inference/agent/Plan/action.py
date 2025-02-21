@@ -23,7 +23,7 @@ class ActionParser():
 
     # Extract Thought and Action from the results returned by LLM,
     # return thought (str) and action (dict), where action has four fields: action, element_id, action_input, description
-    async def extract_thought_and_action(self, response: str) -> Tuple[dict, dict]:
+    async def extract_thought_and_action(self, response: str, mode: str) -> Tuple[dict, dict]:
         result_action = None
         
         # First attempt: Try parsing with regex
@@ -34,11 +34,14 @@ class ActionParser():
         
         # If no code block found or parsing failed, try parsing the whole response
         if not result_action:
-            result_action = self.parse_action(response)
+            try:
+                result_action = self.parse_action(response)
+            except:
+                pass
             
         # If that fails, try regex-based parsing
         if not result_action:
-            result_action = self.parse_action_with_re(response)
+            result_action = self.parse_action_with_re(response, mode)
                 
         # Second attempt: Try using converter + regex if all regex methods failed
         if not result_action:
@@ -63,33 +66,67 @@ class ActionParser():
         result_thought = result_action.get("thought")
         return result_thought, result_action
 
-    def parse_action_with_re(self, message):
-        pattern = r'"thought"\s*:\s*"([^"]*)"\s*,\s*"action"\s*:\s*"([^"]*)"\s*,\s*"action_input"\s*:\s*"([^"]*)"\s*,\s*"element_id"\s*:\s*(null|\d*)\s*,\s*"description"\s*:\s*"([^"]*)"'
+    def parse_action_with_re(self, message, mode):
+        # 根据mode选择不同的正则pattern
+        if mode == "vision":
+            pattern = r'"thought"\s*:\s*"([^"]*)"\s*,\s*"action"\s*:\s*"([^"]*)"\s*,\s*"action_input"\s*:\s*"([^"]*)"\s*,\s*"coordinates"\s*:\s*{\s*"x"\s*:\s*(-?\d+)\s*,\s*"y"\s*:\s*(-?\d+)\s*}\s*,\s*"description"\s*:\s*"([^"]*)"'
+        else:
+            pattern = r'"thought"\s*:\s*"([^"]*)"\s*,\s*"action"\s*:\s*"([^"]*)"\s*,\s*"action_input"\s*:\s*"([^"]*)"\s*,\s*"element_id"\s*:\s*(null|\d*)\s*,\s*"description"\s*:\s*"([^"]*)"'
+        
         match = re.search(pattern, message)
         if match:
-            thought = str(match.group(1))
-            action = str(match.group(2))
-            action_input = str(match.group(3))
-            element_id = str(match.group(4))
-            description = str(match.group(5))
-            thought = re.sub(r'\s+', ' ', thought).strip()
-            action = re.sub(r'\s+', ' ', action).strip()
-            action_input = re.sub(r'\s+', ' ', action_input).strip()
-            element_id = re.sub(r'\s+', ' ', element_id).strip()
-            description = re.sub(r'\s+', ' ', description).strip()
-            result_dict = {
-                "thought": thought,
-                "action": action,
-                "action_input": action_input,
-                "element_id": element_id,
-                "description": description
-            }
+            if mode == "vision":
+                thought = str(match.group(1))
+                action = str(match.group(2))
+                action_input = str(match.group(3))
+                x_coordinate = int(match.group(4)) 
+                y_coordinate = int(match.group(5))
+                description = str(match.group(6))
+                
+                thought = re.sub(r'\s+', ' ', thought).strip()
+                action = re.sub(r'\s+', ' ', action).strip()
+                action_input = re.sub(r'\s+', ' ', action_input).strip()
+                description = re.sub(r'\s+', ' ', description).strip()
+                
+                result_dict = {
+                    "thought": thought,
+                    "action": action,
+                    "action_input": action_input,
+                    "coordinates": {
+                        "x": x_coordinate,
+                        "y": y_coordinate
+                    },
+                    "description": description
+                }
+            else:
+                thought = str(match.group(1))
+                action = str(match.group(2))
+                action_input = str(match.group(3))
+                element_id = str(match.group(4))
+                description = str(match.group(5))
+                
+                thought = re.sub(r'\s+', ' ', thought).strip()
+                action = re.sub(r'\s+', ' ', action).strip()
+                action_input = re.sub(r'\s+', ' ', action_input).strip()
+                element_id = re.sub(r'\s+', ' ', element_id).strip()
+                description = re.sub(r'\s+', ' ', description).strip()
+                
+                result_dict = {
+                    "thought": thought,
+                    "action": action,
+                    "action_input": action_input,
+                    "element_id": element_id,
+                    "description": description
+                }
+                
             return result_dict
+        return None
 
     def parse_action(self, message):
         message_substring = extract_longest_substring(message)
         decoded_result = {}
         decoded_result = json5.loads(message_substring)
+        print("decode result: ", decoded_result)
         return decoded_result
 
     def extract_status_and_description(self, message) -> dict:

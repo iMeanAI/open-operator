@@ -58,7 +58,7 @@ def validate_config(config, observation_mode, global_reward_mode, observation_mo
             detail=f"response_type must be one of: {', '.join(allowed_types)}"
         )
 
-    if observation_mode not in ["dom"]:
+    if observation_mode not in ["dom", "vision"]:
         raise HTTPException(
             status_code=400,
             detail="observation mode is not correctly defined! Currently we only support DOM observation."

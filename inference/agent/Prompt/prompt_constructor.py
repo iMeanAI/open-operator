@@ -274,20 +274,26 @@ class VisionObservationPromptConstructor(BasePromptConstructor):
         self.prompt_system = VisionPrompts.vision_planning_prompt_system 
         self.prompt_user = VisionPrompts.vision_prompt_user
 
-    def construct(self, user_request: str, previous_trace: str, base64_image: str) -> list:
+    def construct(
+            self, 
+            user_request: str, 
+            previous_trace: str, 
+            base64_image: str, 
+            output_parameters: dict = {}, 
+            response_type : str = "") -> list:
         rendered_prompt = Template(self.prompt_user).render(
             user_request=user_request)
-        prompt_elements = [{"type": "text", "text": rendered_prompt}]
+        # prompt_elements = [{"type": "text", "text": rendered_prompt}]
 
         if len(previous_trace) > 0:
             history_memory = HistoryMemory(previous_trace=[previous_trace])
             trace_prompt = history_memory.construct_previous_trace_prompt()
-            prompt_elements.append({"type": "text", "text": trace_prompt})
+        else:
+            trace_prompt = "The previous thoughts, actions and reflections are all empty. Nothing was done before.\n\n"
 
-            prompt_elements.append(
-                {"type": "text", "text": "The current observation is:"})
-            prompt_elements.append(
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}})
+        prompt_elements = [{"type": "text", "text": rendered_prompt + trace_prompt + "The current observation is:"}]
+        prompt_elements.append(
+            {"type": "image", "image": f"data:image;base64,{base64_image}"}) 
 
         messages = [{"role": "system", "content": self.prompt_system},
                     {"role": "user", "content": prompt_elements}]

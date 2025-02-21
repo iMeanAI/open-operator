@@ -154,14 +154,40 @@ class VisionMode(InteractionMode):
     def __init__(self, text_model=None, visual_model=None):
         super().__init__(text_model, visual_model)
 
-    async def execute(self, status_description, user_request, previous_trace, observation, feedback, observation_VforD, output_parameters, response_type):
+    async def execute(self, status_description, user_request, previous_trace, observation, feedback, observation_VforD, input_parameters, output_parameters, response_type):
         planning_request = VisionObservationPromptConstructor(
         ).construct(user_request, previous_trace, observation, output_parameters, response_type)
-        print(f"\033[32m{planning_request}")  # Green color
-        print("\033[0m")
+        # print(f"\033[32m{planning_request}")  # Green color
+        #print("\033[0m")
         logger.info("\033[32m%s\033[0m", planning_request)
         planning_response, error_message = await self.visual_model.request(planning_request)
-        return planning_response, error_message, None, None
+        return planning_response, error_message, None, None, [0,0]  # 0,0 is the example token count
+    
+class VisionTestMode(InteractionMode):
+    def __init__(self, text_model=None, visual_model=None):
+        super().__init__(text_model, visual_model)
+
+    async def execute(self, status_description, user_request, previous_trace, observation, feedback, observation_VforD, input_parameters, output_parameters, response_type):
+        planning_response_1 = """
+        {
+            "thought": "I need to search for the paper submission dates for ACL2025.",
+            "action": "google_search",
+            "action_input": "paper submission dates for ACL2025",
+            "coordinates": {},
+            "description": "Performing a Google search to find the submission dates for ACL2025."
+        }
+        """
+        planning_response_2 = """
+        {
+            "thought": "I need to click on the link that appears to lead to the submission dates for ACL 2025.",
+            "action": "click",
+            "action_input": "",
+            "coordinates": {"x": 1051, "y": 42},
+            "description": "Click a Google search result to find the submission dates for ACL2025."
+        }
+        """
+        planning_response = planning_response_2
+        return planning_response, "test error message", None, None, [0,0]
 
 
 class Planning:
@@ -181,6 +207,7 @@ class Planning:
 
         gpt35 = GPTGenerator(model="gpt-3.5-turbo")
         gpt4v = GPTGenerator(model="gpt-4-turbo")
+        qwen2vl = create_llm_instance("Qwen/Qwen2-VL-72B-Instruct", False)
 
         all_json_models = config["model"]["json_models"]
         is_json_response = config["model"]["json_model_response"]
@@ -192,7 +219,7 @@ class Planning:
             "dom_v_desc": DomVDescMode(visual_model=gpt4v, text_model=llm_planning_text),
             "vision_to_dom": VisionToDomMode(visual_model=gpt4v, text_model=llm_planning_text),
             "d_v": DVMode(visual_model=gpt4v),
-            "vision": VisionMode(visual_model=gpt4v)
+            "vision": VisionTestMode(visual_model=qwen2vl)
         }
 
         # planning_response_thought, planning_response_action
@@ -207,11 +234,12 @@ class Planning:
             output_parameters=config["output_parameters"],
             response_type=config["response_type"]
         )
+
         logger.info(f"\033[34mPlanning_Response:\n{planning_response}\033[0m")
         if mode != "vision_to_dom":
             try:
                 planning_response_thought, planning_response_action = await ActionParser().extract_thought_and_action(
-                    planning_response)
+                    planning_response, mode)
             except ResponseError as e:
                 logger.error(f"Response Error:{e.message}")
                 raise
@@ -232,25 +260,23 @@ class Planning:
             "action": (
                 f'{planning_response_action["action"]}: {planning_response_action["action_input"]}' if "description" not in planning_response_action.keys() else
                 planning_response_action["description"])
-            if mode in ["dom", "d_v", "dom_v_desc", "vision_to_dom"] else (
-                planning_response_action["action"] if "description" not in planning_response_action.keys() else
-                planning_response_action["description"])
         }
         if mode in ["dom", "d_v", "dom_v_desc", "vision_to_dom"]:
             planning_response_action = {element: planning_response_action.get(
                 element, "") for element in ["element_id", "action", "action_input", "description"]}
         elif mode == "vision":
             planning_response_action = {element: planning_response_action.get(
-                element, "") for element in ["action", "description"]}
+                element, "") for element in ["coordinates", "action", "action_input", "description"]}
         logger.info("****************")
         # logger.info(planning_response_action)
         dict_to_write = {}
         if mode in ["dom", "d_v", "dom_v_desc", "vision_to_dom"]:
             dict_to_write['id'] = planning_response_action['element_id']
-            dict_to_write['action_type'] = planning_response_action['action']
-            dict_to_write['value'] = planning_response_action['action_input']
         elif mode == "vision":
-            dict_to_write['action'] = planning_response_action['action']
+            dict_to_write['coordinates'] = planning_response_action['coordinates']
+
+        dict_to_write['action_type'] = planning_response_action['action']
+        dict_to_write['value'] = planning_response_action['action_input']
         dict_to_write['description'] = planning_response_action['description']
         dict_to_write['error_message'] = error_message
         dict_to_write['planning_token_count'] = planning_token_count
