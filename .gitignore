@@ -48,6 +48,7 @@ tmp/
 temp/
 token_results/
 temp_ref/
+results/
 
 # Data
 data/
