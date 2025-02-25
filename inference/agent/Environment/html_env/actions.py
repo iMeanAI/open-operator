@@ -84,24 +84,26 @@ def create_none_action(elementid: int) -> Action:
 
 
 @beartype
-def create_fill_action(elementid: int, fill_text: str) -> Action:
+def create_fill_action(elementid: int, fill_text: str, selector: str) -> Action:
     return {
         "action_type": ActionTypes.FILL_FORM,
         "element_id": elementid,
         "url": "",
         "fill_text": fill_text,
-        "element_name": ""
+        "element_name": "",
+        "selector": selector
     }
 
 
 @beartype
-def create_fill_search_action(elementid: int, fill_text: str) -> Action:
+def create_fill_search_action(elementid: int, fill_text: str, selector: str) -> Action:
     return {
         "action_type": ActionTypes.FILL_SEARCH,
         "element_id": elementid,
         "url": "",
         "fill_text": fill_text,
-        "element_name": ""
+        "element_name": "",
+        "selector": selector
     }
 
 
@@ -128,23 +130,25 @@ def create_go_back_action(elementid: int) -> Action:
 
 
 @beartype
-def create_select_option_action(elementid: int, target_value: str) -> Action:
+def create_select_option_action(elementid: int, target_value: str, selector: str) -> Action:
     return {
         "action_type": ActionTypes.SELECT_OPTION,
         "element_id": elementid,
         "url": "",
         "fill_text": target_value,
-        "element_name": ""
+        "element_name": "",
+        "selector": selector
     }
 
 @beartype
-def create_hover_action(elementid: int) -> Action:
+def create_hover_action(elementid: int, selector: str) -> Action:
     return {
         "action_type": ActionTypes.HOVER,
         "element_id": elementid,
         "url": "",
         "fill_text": "",
-        "element_name": ""
+        "element_name": "",
+        "selector": selector
     }
 
 @beartype

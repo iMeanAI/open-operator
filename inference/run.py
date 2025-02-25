@@ -8,7 +8,6 @@ import os
 import json
 from dataclasses import dataclass
 import pandas as pd
-import numpy as np
 
 from agent.Utils.utils import *
 from agent.Environment.html_env.async_env import AsyncHTMLEnvironment
