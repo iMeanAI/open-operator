@@ -50,13 +50,14 @@ def create_get_final_answer(elementid: int,fill_text: str) -> Action:
 
 
 @beartype
-def create_click_action(elementid: int) -> Action:
+def create_click_action(elementid: int, selector: str) -> Action:
     return {
         "action_type": ActionTypes.CLICK,
         "element_id": elementid,
         "url": "",
         "fill_text": "",
-        "element_name": ""
+        "element_name": "",
+        "selector": selector
     }
 
 
@@ -167,13 +168,13 @@ def create_scroll_up_action(elementid: int) -> Action:
     }
 
 @beartype
-def create_action(elementid: int, action_type: str, action_input: str) -> Action:
+def create_action(elementid: int, action_type: str, action_input: str, selector: str) -> Action:
     if action_type == "click":
-        return create_click_action(elementid=elementid)
+        return create_click_action(elementid=elementid, selector=selector)
     elif action_type == "fill_form":
-        return create_fill_action(elementid=elementid, fill_text=action_input)
+        return create_fill_action(elementid=elementid, fill_text=action_input, selector=selector)
     elif action_type == "fill_search":
-        return create_fill_search_action(elementid=elementid, fill_text=action_input)
+        return create_fill_search_action(elementid=elementid, fill_text=action_input, selector=selector)
     elif action_type == "goto":
         return create_goto_action(elementid=elementid, url=action_input)
     elif action_type == "google_search":
@@ -181,9 +182,9 @@ def create_action(elementid: int, action_type: str, action_input: str) -> Action
     elif action_type == "go_back":
         return create_go_back_action(elementid=elementid)
     elif action_type == "select_option":
-        return create_select_option_action(elementid=elementid, target_value=action_input)
+        return create_select_option_action(elementid=elementid, target_value=action_input, selector=selector)
     elif action_type == "hover":
-        return create_hover_action(elementid=elementid)
+        return create_hover_action(elementid=elementid, selector=selector)
     elif action_type == "scroll_down":
         return create_scroll_down_action(elementid=elementid)
     elif action_type == "scroll_up":

@@ -108,6 +108,14 @@ def create_demo():
     return demo
 
 if __name__ == "__main__":
-    demo = create_demo()
-    # Launch with share=True to get a public URL
-    demo.launch(share=True, server_name="0.0.0.0") 
+    try:
+        logging.info("Starting Gradio server...")
+        demo = create_demo()
+        demo.launch(
+            server_name="127.0.0.1",
+            server_port=7860,
+            debug=True,
+            show_error=True
+        )
+    except Exception as e:
+        logging.error(f"Failed to start server: {str(e)}") 

@@ -15,7 +15,7 @@ import re
 
 from .actions import Action, ActionTypes
 from .build_tree import HTMLTree
-from .utils import stringfy_value, ElementNode
+from .utils import stringfy_value
 import time
 
 from agent.Prompt import *
@@ -272,22 +272,46 @@ class AsyncHTMLEnvironment:
         await self.setup(start_url)
 
     
-    async def _get_element_id_at_position(self, x: int, y: int) -> Optional[int]:
+    async def _get_element_at_position(self, x: int, y: int) -> Optional[str]:
         """
-        Helper method to get element ID at coordinates
-        Returns ID from HTMLTree
+        Helper method to get element selector at coordinates
+        Returns CSS selector string or None if no element found
         """
         try:
             page = self.page
             element = await page.evaluate(f'''() => {{
                 const element = document.elementFromPoint({x}, {y});
-                // 查找最近的有意义的子元素
+                // Find nearest interactive child element or use the element itself
                 const targetElement = element.querySelector('a, button, input, select, textarea') || element;
                 
+                // Generate unique selector
+                function getSelector(el) {{
+                    let path = [];
+                    while (el && el.nodeType === Node.ELEMENT_NODE) {{
+                        let selector = el.nodeName.toLowerCase();
+                        if (el.id) {{
+                            selector += '#' + el.id;
+                            path.unshift(selector);
+                            break;
+                        }} else {{
+                            let sibling = el;
+                            let nth = 1;
+                            while (sibling.previousElementSibling) {{
+                                sibling = sibling.previousElementSibling;
+                                if (sibling.nodeName === el.nodeName) nth++;
+                            }}
+                            if (nth > 1) selector += `:nth-child(${{nth}})`;
+                        }}
+                        path.unshift(selector);
+                        el = el.parentNode;
+                    }}
+                    return path.join(' > ');
+                }}
+                
                 return {{
+                    selector: getSelector(targetElement),
                     tag: targetElement.tagName.toLowerCase(),
                     id: targetElement.id || '',
-                    className: targetElement.className || '',
                     textContent: targetElement.textContent?.trim().substring(0, 100) || '',
                     isClickable: (targetElement.tagName === 'A' || targetElement.tagName === 'BUTTON' || targetElement.onclick != null)
                 }};
@@ -295,19 +319,12 @@ class AsyncHTMLEnvironment:
             
             if element:
                 print("element:", element)
-                # 在 HTMLTree 中查找匹配的元素
-                for node_id, node in enumerate(self.tree.elementNodes):
-                    if node == ElementNode:
-                        break
-                    # print("node:", node)
-                    if (node["tagName"] == element['tag'] and
-                        node["nodeId"] == element['id']):
-                        return node_id
+                return element
             
-            return 0
+            return None
         except Exception as e:
-            logger.error(f"Failed to get element ID at position: {str(e)}")
-            return 0
+            logger.error(f"Failed to get element at position: {str(e)}")
+            return None
 
     async def click(self, action):
         try:
@@ -315,11 +332,13 @@ class AsyncHTMLEnvironment:
                 self.tree.elementNodes[action["element_id"]])
             action.update({"element_id": element_id,
                            "element_name": label})
-            selector, xpath = self.tree.get_selector_and_xpath(
-                action["element_id"])
+            # selector, xpath = self.tree.get_selector_and_xpath(
+            #     action["element_id"])
+            #TODO: check whether this one is robust in dom mode
+            selector = action["selector"]
         except Exception as e:
             logger.error(
-                f"selector:{selector},label_name:{label},element_id: {element_id},error ({e}) in click action.")
+                f"selector:{selector}, label_name:{label}, element_id: {element_id},error ({e}) in click action.")
         if label == "link":
             try:
                 element = self.tree.elementNodes[element_id]
@@ -327,14 +346,11 @@ class AsyncHTMLEnvironment:
                 if bool(urlparse(url).netloc) is False:
                     base_url = self.page.url()
                     url = urljoin(base_url, url)
-                # self.last_page = self.page
-                # self.page = await self.context.new_page()
                 await self.page.goto(url, timeout=10000)
                 await self.page.wait_for_timeout(2000)
                 self.html_content = await self.page.content()
             except:
                 try:
-                    # self.last_page = self.page
                     selector = rf"{selector}"
                     await self.page.evaluate(f'''(selector) => {{
                         var element = document.querySelector(selector);
@@ -372,8 +388,10 @@ class AsyncHTMLEnvironment:
                 self.tree.elementNodes[action["element_id"]])
             action.update({"element_id": element_id,
                            "element_name": label})
-            selector, xpath = self.tree.get_selector_and_xpath(
-                action["element_id"])
+            # selector, xpath = self.tree.get_selector_and_xpath(
+            #     action["element_id"])
+            #TODO: check whether this one is robust in dom mode
+            selector = action["selector"]
         except Exception as e:
             logger.error(
                 f"selector:{selector},label_name:{label},element_id: {element_id},error ({e}) in fill_search action.")
@@ -406,8 +424,10 @@ class AsyncHTMLEnvironment:
                 self.tree.elementNodes[action["element_id"]])
             action.update({"element_id": element_id,
                            "element_name": label})
-            selector, xpath = self.tree.get_selector_and_xpath(
-                action["element_id"])
+            # selector, xpath = self.tree.get_selector_and_xpath(
+            #     action["element_id"])
+            #TODO: check whether this one is robust in dom mode
+            selector = action["selector"]
         except Exception as e:
             logger.error(
                 f"selector:{selector},label_name:{label},element_id: {element_id},error ({e}) in fill_form action.")
@@ -437,8 +457,6 @@ class AsyncHTMLEnvironment:
         self.html_content = await self.page.content()
 
     async def go_back_last_page(self, action):
-        # self.page = self.last_page
-        # self.last_page = self.page
         await self.page.go_back()
         await self.page.wait_for_timeout(2000)
         self.html_content = await self.page.content()
@@ -449,8 +467,10 @@ class AsyncHTMLEnvironment:
                 self.tree.elementNodes[action["element_id"]])
             action.update({"element_id": element_id,
                            "element_name": label})
-            selector, xpath = self.tree.get_selector_and_xpath(
-                action["element_id"])
+            # selector, xpath = self.tree.get_selector_and_xpath(
+            #     action["element_id"])
+            #TODO: check whether this one is robust in dom mode
+            selector = action["selector"]
         except Exception as e:
             logger.error(
                 f"selector:{selector},label_name:{label},element_id: {element_id},error ({e}) in select_option action.")
@@ -511,8 +531,10 @@ class AsyncHTMLEnvironment:
                 self.tree.elementNodes[action["element_id"]])
             action.update({"element_id": element_id,
                            "element_name": label})
-            selector, xpath = self.tree.get_selector_and_xpath(
-                action["element_id"])
+            # selector, xpath = self.tree.get_selector_and_xpath(
+            #     action["element_id"])
+            #TODO: check whether this one is robust in dom mode
+            selector = action["selector"]
         except Exception as e:
             logger.error(
                 f"selector:{selector},label_name:{label},element_id: {element_id},error ({e}) in hover action.")
@@ -569,9 +591,6 @@ class AsyncHTMLEnvironment:
         """
         await self._event_listener()
         if "element_id" in action and action["element_id"] != 0:
-            # logger.info(f'action["element_id"]:{action["element_id"]}')
-            # logger.info(
-            #     f'tree.nodeDict[action["element_id"]]:{self.tree.nodeDict[action["element_id"]]}')
             action["element_id"] = self.tree.nodeDict[action["element_id"]]
             element_value = self.tree.get_element_value(action["element_id"])
         match action["action_type"]:
@@ -758,83 +777,3 @@ class AsyncHTMLEnvironment:
                     f"Page load timed out or encountered an error, retrying ({retry_count + 1}/{max_retries}): {e}")
                 retry_count += 1
         logger.info("Maximum retries reached, unable to load the page.")
-
-    async def test_click_action(self, selector):
-        await self.page.wait_for_selector(selector)
-        is_clickable = await self.page.is_enabled(selector)
-        selector = rf"{selector}"
-        try:
-            await self.page.evaluate(f'''(selector) => {{
-                var element = document.querySelector(selector);
-                if (element) {{
-                    element.click();   
-                }} 
-            }}''', selector)
-            logger.info("Click Success")
-        except Exception as e:
-            logger.info("Click Failed:", e)
-        await self.page.wait_for_timeout(20000)
-
-    async def test_select_option_action(self, selector, value):
-        # Get all option values from select element including optgroups
-        optgroup_values = await self.page.evaluate(f'''(selector) => {{
-                var values = [];
-                var selectElement = document.querySelector(selector);
-                var options = selectElement.querySelectorAll('option');
-                for (var option of options) {{
-                    values.push(option.innerText);
-                }}
-                var optgroups = selectElement.querySelectorAll('optgroup');
-                for (var optgroup of optgroups) {{
-                    var options = optgroup.querySelectorAll('option');
-                    for (var option of options) {{
-                        values.push(option.innerText);
-                    }}   
-                }}
-                return values;
-            }}''', selector)
-
-        # Find best matching option using string similarity
-        best_option = [-1, "", -1]
-        for i, option in enumerate(optgroup_values):
-            similarity = SequenceMatcher(None, option, value).ratio()
-            if similarity > best_option[2]:
-                best_option = [i, option, similarity]
-
-        # Select the best matching option and trigger change event
-        await self.page.evaluate(f'''(selector) => {{
-            var selectElement = document.querySelector(selector);
-            var options = selectElement.querySelectorAll('option');
-            for (var option of options) {{
-                if (option.innerText === "{best_option[1]}") {{
-                    option.selected = true;
-                    selectElement.dispatchEvent(new Event('change'));
-                    return;
-                }}
-            }}
-            var optgroups = selectElement.querySelectorAll('optgroup');
-            for (var optgroup of optgroups) {{
-                var options = optgroup.querySelectorAll('option');
-                for (var option of options) {{
-                    if (option.innerText === "{best_option[1]}") {{
-                        option.selected = true;
-                        selectElement.dispatchEvent(new Event('change'));
-                        return;
-                    }}
-                }}
-            }}
-        }}''', selector)
-        await self.page.wait_for_timeout(2000)
-
-    async def test_fill_form_action(self, selector, value):
-        # Set input value and trigger input event
-        selector = rf"{selector}"
-        await self.page.evaluate(f'''(selector) => {{
-                var element = document.querySelector(selector);
-                if (element) {{
-                    element.value = '{value}';
-                    element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                }}
-            }}
-        ''', selector)
-        await self.page.wait_for_timeout(2000)

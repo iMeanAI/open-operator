@@ -59,28 +59,31 @@ async def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_re
     element_value = ""
     text_content = ""
     selector = None
-    
+
     try:
-        if env.mode == "vision":
-            coordinates = response.get('coordinates', {"x": 0, "y": 0})
-            element_id = await env._get_element_id_at_position(coordinates["x"],coordinates["y"])
-        else:
-            element_id = int(response['id'])
+        element_id = int(response['id'])
     except:
         element_id = 0
+    
         
     if action_type in ["fill_form", "fill_search", "click", "select_option"]:
         try:
             logger.debug(f"Processing element with id: {element_id}")
             logger.debug(f"Current env.tree.nodeDict keys: {list(env.tree.nodeDict.keys())}")
-            
-            selector = env.tree.get_selector_and_xpath(
+
+            if env.mode == "vision":
+                coordinates = response.get('coordinates', {"x": 0, "y": 0})
+                element = await env._get_element_at_position(coordinates["x"],coordinates["y"])
+                selector = element["selector"]
+                element_value = element["textContent"]
+            else:
+                selector = env.tree.get_selector_and_xpath(
                 env.tree.nodeDict[element_id])
-            logger.debug(f"Got selector result: {selector}")
-            
-            element_value = env.tree.get_element_value(
-                env.tree.nodeDict[element_id])
-            logger.debug(f"Got element value: {element_value}")
+                logger.debug(f"Got selector result: {selector}")
+                
+                element_value = env.tree.get_element_value(
+                    env.tree.nodeDict[element_id])
+                logger.debug(f"Got element value: {element_value}")
             
             if action_type in ["fill_form", "fill_search"]:
                 element_value = acton_input
@@ -105,11 +108,12 @@ async def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_re
         
     try:
         execute_action = create_action(
-            elementid=element_id, action_type=action_type, action_input=str(acton_input))  # 确保转换为字符串
+            elementid=element_id, action_type=action_type, action_input=str(acton_input), selector=selector)
+        logger.info(f"Create action: {execute_action}")
     except Exception as e:
         logger.error(f"Create action error: {e}")
         execute_action = create_action(
-            elementid=element_id, action_type="None", action_input="")
+            elementid=element_id, action_type="None", action_input="", selector=selector)
             
     return execute_action, current_trace, selector, element_value, text_content
 
@@ -249,7 +253,7 @@ async def run_task(
         response_type=None
 ):
     # await env.reset("https://www.google.com/")
-    await env.reset("https://www.google.com/search?q=paper+submission+dates+for+ACL2025")
+    await env.reset("https://www.ycombinator.com/launches")
     response_error_count = 0
     response_total_count = 0
     vision_reward = None

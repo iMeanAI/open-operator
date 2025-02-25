@@ -182,7 +182,7 @@ class VisionTestMode(InteractionMode):
             "thought": "I need to click on the link that appears to lead to the submission dates for ACL 2025.",
             "action": "click",
             "action_input": "",
-            "coordinates": {"x": 1051, "y": 42},
+            "coordinates": {"x": 198, "y": 45},
             "description": "Click a Google search result to find the submission dates for ACL2025."
         }
         """
