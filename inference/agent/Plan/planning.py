@@ -214,7 +214,7 @@ class Planning:
     async def plan(
         config,
         user_request,
-        text_model_name,
+        model_name,
         previous_trace,
         observation,
         feedback,
@@ -224,24 +224,19 @@ class Planning:
     ):
 
         gpt35 = GPTGenerator(model="gpt-3.5-turbo")
-        gpt4v = GPTGenerator(model="gpt-4-turbo")
-        qwen2vl = create_llm_instance("Qwen/Qwen2-VL-72B-Instruct", False)
-        llamavf = create_llm_instance("meta-llama/Llama-Vision-Free", False)
-        llama3_90b = create_llm_instance("meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo", False)
-        llama3_11b = create_llm_instance("meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo", False)
-        
+        gpt4v = GPTGenerator(model="gpt-4-turbo")        
 
         all_json_models = config["model"]["json_models"]
         is_json_response = config["model"]["json_model_response"]
 
-        llm_planning_text = create_llm_instance(
-            text_model_name, is_json_response, all_json_models)
+        llm_planning_model = create_llm_instance(
+            model_name, is_json_response, all_json_models)
         modes = {
-            "dom": DomMode(text_model=llm_planning_text),
-            "dom_v_desc": DomVDescMode(visual_model=gpt4v, text_model=llm_planning_text),
-            "vision_to_dom": VisionToDomMode(visual_model=gpt4v, text_model=llm_planning_text),
+            "dom": DomMode(text_model=llm_planning_model),
+            "dom_v_desc": DomVDescMode(visual_model=gpt4v, text_model=llm_planning_model),
+            "vision_to_dom": VisionToDomMode(visual_model=gpt4v, text_model=llm_planning_model),
             "d_v": DVMode(visual_model=gpt4v),
-            "vision": VisionTestMode(visual_model=llama3_90b)
+            "vision": VisionMode(visual_model= llm_planning_model)
         }
 
         # planning_response_thought, planning_response_action

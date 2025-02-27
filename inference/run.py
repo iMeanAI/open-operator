@@ -36,7 +36,7 @@ class TaskRequest(BaseModel):
 class ExperimentConfig:
     mode: str
     global_reward_mode: str
-    planning_text_model: str
+    planning_model: str
     global_reward_text_model: str
     task_name: str
     config: dict
@@ -161,7 +161,7 @@ async def run_experiment(experiment_config: ExperimentConfig) -> TaskResponse:
         # Set up token tracking
         if not os.path.exists("token_results"):
             os.makedirs("token_results")
-        token_counts_filename = f"token_results/token_counts_{experiment_config.record_time}_{experiment_config.planning_text_model}_{experiment_config.global_reward_text_model}.json"
+        token_counts_filename = f"token_results/token_counts_{experiment_config.record_time}_{experiment_config.planning_model}_{experiment_config.global_reward_text_model}.json"
 
         result = await run_task(
             mode=experiment_config.mode,
@@ -174,7 +174,7 @@ async def run_experiment(experiment_config: ExperimentConfig) -> TaskResponse:
             env=env,
             global_reward_mode=experiment_config.global_reward_mode,
             global_reward_text_model=experiment_config.global_reward_text_model,
-            planning_text_model=experiment_config.planning_text_model,
+            planning_model=experiment_config.planning_model,
             ground_truth_mode=False,
             ground_truth_data=None,
             interaction_mode=experiment_config.config['steps']['interaction_mode'],
@@ -260,7 +260,7 @@ async def execute_task(task_request: TaskRequest) -> TaskResponse:
         experiment_config = ExperimentConfig(
             mode=task_request.observation_mode,
             global_reward_mode=task_request.global_reward_mode,
-            planning_text_model=task_request.planning_text_model,
+            planning_model=task_request.planning_text_model,
             global_reward_text_model=task_request.global_reward_text_model,
             task_name=task_request.task_name,
             config=config,

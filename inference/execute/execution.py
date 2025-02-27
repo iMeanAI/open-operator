@@ -244,7 +244,7 @@ async def run_task(
         env,
         global_reward_mode,
         global_reward_text_model,
-        planning_text_model,
+        planning_model,
         ground_truth_mode,
         ground_truth_data,
         interaction_mode,
@@ -305,7 +305,7 @@ async def run_task(
     steps_reward_output_token_counts = 0
     steps_input_token_counts = 0
     steps_output_token_counts = 0
-    token_counts_filename = f"token_results/token_counts_{record_time}_{planning_text_model}_{global_reward_text_model}.json"
+    token_counts_filename = f"token_results/token_counts_{record_time}_{planning_model}_{global_reward_text_model}.json"
     final_answer = None
     while num_steps < max_steps + additional_steps:
         error_message = ""
@@ -339,7 +339,7 @@ async def run_task(
                 out_put = await Planning.plan(
                     config=config,
                     user_request=task_name,
-                    text_model_name=planning_text_model,
+                    model_name=planning_model,
                     previous_trace=previous_trace,
                     observation=observation,
                     feedback=error_description,
@@ -494,7 +494,7 @@ async def run_task(
                 step_tokens["steps_token_counts"] = steps_token_counts
 
                 save_token_count_to_file(token_counts_filename, step_tokens, task_name, global_reward_text_model,
-                                        planning_text_model, config["token_pricing"])
+                                        planning_model, config["token_pricing"])
                 
                 logger.info(f"**final answer is {str(final_answer)}**")
                 return final_answer
@@ -547,14 +547,14 @@ async def run_task(
     step_tokens["steps_token_counts"] = steps_token_counts
 
     save_token_count_to_file(token_counts_filename, step_tokens, task_name, global_reward_text_model,
-                             planning_text_model, config["token_pricing"])
+                             planning_model, config["token_pricing"])
     
     
     # 如果到这里还没有 return，说明任务未完成
     execution_summary = await summarize_execution_steps(
         steps_list, 
         task_name,
-        planning_text_model
+        planning_model
     )
     
     result = {

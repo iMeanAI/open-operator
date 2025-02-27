@@ -22,7 +22,11 @@ available_models = [
     "o1-mini",
     "claude-3.5-sonnet",
     "claude-3.5-haiku",
-    "gemini-1.5-pro"
+    "gemini-1.5-pro",
+    "Qwen/Qwen2-VL-72B-Instruct",
+    "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",
+    "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+    "meta-llama/Llama-Vision-Free"
 ]
 selected = "gpt-4o"
 json_model_response = false
