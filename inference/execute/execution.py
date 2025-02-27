@@ -66,7 +66,7 @@ async def parse_current_trace(response: dict, env: AsyncHTMLEnvironment, step_re
         element_id = 0
     
         
-    if action_type in ["fill_form", "fill_search", "click", "select_option"]:
+    if action_type in ["fill_form", "fill_search", "click", "select_option", "hover"]:
         try:
             logger.debug(f"Processing element with id: {element_id}")
             logger.debug(f"Current env.tree.nodeDict keys: {list(env.tree.nodeDict.keys())}")

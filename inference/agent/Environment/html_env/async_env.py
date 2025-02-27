@@ -706,7 +706,7 @@ class AsyncHTMLEnvironment:
 
     @staticmethod
     def encode_and_resize(image):
-        img_res = 1080
+        img_res = 1280
         w, h = image.size
         img_res_h = int(img_res * h / w)
         image = image.resize((img_res, img_res_h))

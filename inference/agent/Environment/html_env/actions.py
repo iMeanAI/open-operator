@@ -1,5 +1,5 @@
 from beartype import beartype
-from typing import TypedDict
+from typing import TypedDict, Optional
 from enum import IntEnum
 
 
@@ -172,7 +172,7 @@ def create_scroll_up_action(elementid: int) -> Action:
     }
 
 @beartype
-def create_action(elementid: int, action_type: str, action_input: str, selector: str) -> Action:
+def create_action(elementid: int, action_type: str, action_input: str, selector: Optional[str] = None) -> Action:
     if action_type == "click":
         return create_click_action(elementid=elementid, selector=selector)
     elif action_type == "fill_form":

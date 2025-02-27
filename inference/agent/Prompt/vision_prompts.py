@@ -55,17 +55,6 @@ class VisionPrompts:
         }
         ```
 
-    - A VALID JSON BLOB EXAMPLE FOR FILL ACTION:
-        ```
-        {
-            "thought": "I need to enter the search query, which is to find the date of Chinese New Year in 2025",
-            "action": "fill",
-            "action_input": "2025 Chinese New Year",
-            "coordinates": {"x": 320, "y": 150},
-            "description": "Entering the search query in the input field at coordinates (320, 150)."
-        }
-        ```
-
     - A VALID JSON BLOB EXAMPLE FOR FINAL ANSWER:
         ```
         {

@@ -16,7 +16,7 @@ class TogetherAIGenerator:
             base_url="https://api.together.xyz/v1"
         )
 
-    async def request(self, messages: list = None, max_tokens: int = 500, temperature: float = 0.7
+    async def request(self, messages: list = None, max_tokens: int = 8500, temperature: float = 0.7
                       ) -> (str, str):
         try:
             openai_response = await self.chat(messages, max_tokens, temperature)

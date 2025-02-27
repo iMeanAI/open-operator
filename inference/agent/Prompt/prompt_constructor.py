@@ -286,14 +286,14 @@ class VisionObservationPromptConstructor(BasePromptConstructor):
         # prompt_elements = [{"type": "text", "text": rendered_prompt}]
 
         if len(previous_trace) > 0:
-            history_memory = HistoryMemory(previous_trace=[previous_trace])
+            history_memory = HistoryMemory(previous_trace=previous_trace)
             trace_prompt = history_memory.construct_previous_trace_prompt()
         else:
             trace_prompt = "The previous thoughts, actions and reflections are all empty. Nothing was done before.\n\n"
 
         prompt_elements = [{"type": "text", "text": rendered_prompt + trace_prompt + "The current observation is:"}]
         prompt_elements.append(
-            {"type": "image", "image": f"data:image;base64,{base64_image}"}) 
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}) 
 
         messages = [{"role": "system", "content": self.prompt_system},
                     {"role": "user", "content": prompt_elements}]

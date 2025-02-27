@@ -13,6 +13,7 @@ class HistoryMemory:
             input_list = json5.loads(self.previous_trace, encoding="utf-8")
         except:
             input_list = self.previous_trace
+        print("input_list", input_list)
         if len(input_list) > 2:
             str_output = "["
             for idx in range(len(input_list)-1):

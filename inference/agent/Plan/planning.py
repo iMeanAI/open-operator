@@ -157,7 +157,7 @@ class VisionMode(InteractionMode):
     async def execute(self, status_description, user_request, previous_trace, observation, feedback, observation_VforD, input_parameters, output_parameters, response_type):
         planning_request = VisionObservationPromptConstructor(
         ).construct(user_request, previous_trace, observation, output_parameters, response_type)
-        # print(f"\033[32m{planning_request}")  # Green color
+        #print(f"\033[32m{planning_request}")  # Green color
         #print("\033[0m")
         logger.info("\033[32m%s\033[0m", planning_request)
         planning_response, error_message = await self.visual_model.request(planning_request)
@@ -168,25 +168,43 @@ class VisionTestMode(InteractionMode):
         super().__init__(text_model, visual_model)
 
     async def execute(self, status_description, user_request, previous_trace, observation, feedback, observation_VforD, input_parameters, output_parameters, response_type):
-        planning_response_1 = """
-        {
-            "thought": "I need to search for the paper submission dates for ACL2025.",
-            "action": "google_search",
-            "action_input": "paper submission dates for ACL2025",
-            "coordinates": {},
-            "description": "Performing a Google search to find the submission dates for ACL2025."
-        }
-        """
-        planning_response_2 = """
+        planning_response_click = """
         {
             "thought": "I need to click on the link that appears to lead to the submission dates for ACL 2025.",
             "action": "click",
             "action_input": "",
-            "coordinates": {"x": 198, "y": 45},
+            "coordinates": {"x": 230, "y": 45},
             "description": "Click a Google search result to find the submission dates for ACL2025."
         }
         """
-        planning_response = planning_response_2
+        planning_response_fill_search = """
+        {
+            "thought": "I need to fill in the submission dates for ACL 2025.",
+            "action": "fill_search",
+            "action_input": "AI",
+            "coordinates": {"x": 330, "y": 250},
+            "description": "Filling in the submission dates for ACL2025."   
+        }
+        """
+        planning_response_hover = """
+        {
+            "thought": "I need to hover over the submission dates for ACL 2025.",
+            "action": "hover",
+            "action_input": "",
+            "coordinates": {"x": 230, "y": 45},
+            "description": "Hovering over the submission dates for ACL2025."
+        }
+        """
+        planning_response_select = """
+        {
+            "thought": "I need to select the submission dates for ACL 2025.",
+            "action": "select_option",
+            "action_input": "",
+            "coordinates": {"x": 460, "y": 230},
+            "description": "Selecting the submission dates for ACL2025."
+        }
+        """
+        planning_response = planning_response_fill_search
         return planning_response, "test error message", None, None, [0,0]
 
 
@@ -208,6 +226,10 @@ class Planning:
         gpt35 = GPTGenerator(model="gpt-3.5-turbo")
         gpt4v = GPTGenerator(model="gpt-4-turbo")
         qwen2vl = create_llm_instance("Qwen/Qwen2-VL-72B-Instruct", False)
+        llamavf = create_llm_instance("meta-llama/Llama-Vision-Free", False)
+        llama3_90b = create_llm_instance("meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo", False)
+        llama3_11b = create_llm_instance("meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo", False)
+        
 
         all_json_models = config["model"]["json_models"]
         is_json_response = config["model"]["json_model_response"]
@@ -219,7 +241,7 @@ class Planning:
             "dom_v_desc": DomVDescMode(visual_model=gpt4v, text_model=llm_planning_text),
             "vision_to_dom": VisionToDomMode(visual_model=gpt4v, text_model=llm_planning_text),
             "d_v": DVMode(visual_model=gpt4v),
-            "vision": VisionTestMode(visual_model=qwen2vl)
+            "vision": VisionTestMode(visual_model=llama3_90b)
         }
 
         # planning_response_thought, planning_response_action
